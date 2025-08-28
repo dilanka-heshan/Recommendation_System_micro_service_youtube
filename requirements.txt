@@ -1,0 +1,23 @@
+langchain
+langchain-openai
+langchain-core
+langchain_community
+langgraph
+langsmith
+langchain_chroma
+python-multipart
+fastapi
+uvicorn
+pydantic
+python-dotenv
+# Database and vector search
+supabase
+qdrant-client
+numpy
+# Embedding and reranking models
+sentence-transformers
+torch
+# Additional utilities
+pandas
+scikit-learn
+pymongo
