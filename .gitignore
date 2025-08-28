@@ -225,7 +225,7 @@ logs/
 *.log
 
 # Model files and checkpoints (can be large)
-models/
+
 checkpoints/
 *.pkl
 *.pt
@@ -234,7 +234,7 @@ checkpoints/
 *.hdf5
 
 # Jupyter notebook outputs
-*.ipynb
+
 
 # Data files (can be large)
 data/
