@@ -5,19 +5,16 @@ load_dotenv()
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List, Dict, Any
-from backend.api.routes import recommendations, feedback, user, run_workflow, newsletter
+from backend.api.routes import recommendations, run_workflow, newsletter, user_vector_update
 
 app = FastAPI(title="YouTube Recommendation Services", version="1.0.0")
 
 #Pydentic request model
 
-
-
 app.include_router(recommendations.router, prefix="/recommendations", tags=["recommendations"])
-app.include_router(feedback.router, prefix="/feedback", tags=["feedback"])
-#app.include_router(user.router, prefix="/user", tags=["user"])
 app.include_router(run_workflow.router, prefix="/run-workflow", tags=["run-workflow"])
 app.include_router(newsletter.router, prefix="/newsletter", tags=["newsletter"])
+app.include_router(user_vector_update.router, prefix="/user-vector-update", tags=["user-vector-update"])
 
 
 @app.get("/health")

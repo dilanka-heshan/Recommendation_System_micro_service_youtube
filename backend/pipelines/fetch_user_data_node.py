@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-@traceable(name="fetch_user_data")
+# @traceable(name="fetch_user_data")  # Disabled due to circular reference issues
 def fetch_user_data_node(state: 'PipelineState') -> 'PipelineState':
     """
     Fetch user embedding and high-rating videos

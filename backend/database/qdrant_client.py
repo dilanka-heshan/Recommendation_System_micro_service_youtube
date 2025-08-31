@@ -257,5 +257,117 @@ class QdrantVectorClient:
             logger.error(f"Error getting collection info: {str(e)}")
             return {}
 
+    # ============= USER VECTOR UPDATE PIPELINE METHODS =============
+    
+    def get_video_embeddings_batch(self, video_ids: List[str]) -> Dict[str, List[float]]:
+        """
+        Batch retrieve video embeddings for multiple video IDs
+        Args:
+            video_ids: List of video IDs to fetch embeddings for
+        Returns:
+            Dict mapping video_id to embedding vector
+        """
+        if not self.client or not QDRANT_AVAILABLE:
+            logger.warning("Qdrant not available - cannot retrieve video embeddings")
+            return {}
+        
+        if not video_ids:
+            return {}
+        
+        try:
+            video_embeddings = {}
+            video_ids_set = set(video_ids)  # For faster lookup
+            
+            # Use scroll approach similar to get_videos_by_ids since it works correctly
+            # Process in batches to handle large numbers of video IDs efficiently
+            batch_size = 1000  # Larger batch for scroll since it's more efficient
+            remaining_videos = video_ids_set.copy()
+            
+            while remaining_videos and len(video_embeddings) < len(video_ids):
+                try:
+                    # Use scroll to get points with video_id in payload
+                    scroll_result = self.client.scroll(
+                        collection_name=self.collection_name,
+                        limit=batch_size,
+                        with_payload=["video_id"],  # Only get video_id from payload
+                        with_vectors=True
+                    )
+                    
+                    # Filter results client-side to match our video_ids
+                    found_in_batch = 0
+                    for point in scroll_result[0]:  # scroll_result is (points, next_page_offset)
+                        point_video_id = point.payload.get("video_id")
+                        if point_video_id in remaining_videos:
+                            # Store embedding with video_id as key
+                            if point.vector:
+                                video_embeddings[point_video_id] = list(point.vector)
+                                remaining_videos.remove(point_video_id)
+                                found_in_batch += 1
+                    
+                    # If we didn't find any matches in this batch, break to avoid infinite loop
+                    if found_in_batch == 0:
+                        break
+                        
+                    # Continue scrolling if there are more videos to find and more points to check
+                    if remaining_videos and len(scroll_result[0]) == batch_size:
+                        # There might be more points to check, continue with next batch
+                        continue
+                    else:
+                        # Either found all videos or reached end of collection
+                        break
+                        
+                except Exception as scroll_error:
+                    logger.error(f"Error during scroll operation: {str(scroll_error)}")
+                    break
+            
+            logger.info(f"Retrieved embeddings for {len(video_embeddings)}/{len(video_ids)} videos")
+            return video_embeddings
+            
+        except Exception as e:
+            logger.error(f"Error in batch video embedding retrieval: {str(e)}")
+            return {}
+    
+#check this function necessary to implement
+    def validate_video_exists(self, video_ids: List[str]) -> List[str]:
+        """
+        Validate which video IDs exist in the Qdrant collection
+        Args:
+            video_ids: List of video IDs to validate
+        Returns:
+            List of video IDs that exist in the collection
+        """
+        if not self.client or not QDRANT_AVAILABLE:
+            logger.warning("Qdrant not available - cannot validate videos")
+            return []
+        
+        try:
+            existing_videos = []
+            
+            # Process in batches
+            batch_size = 100
+            for i in range(0, len(video_ids), batch_size):
+                batch_ids = video_ids[i:i + batch_size]
+                
+                try:
+                    points = self.client.retrieve(
+                        collection_name=self.collection_name,
+                        ids=batch_ids,
+                        with_vectors=False  # We only need to check existence
+                    )
+                    
+                    for point in points:
+                        existing_videos.append(str(point.id))
+                
+                except Exception as batch_error:
+                    logger.error(f"Error validating batch {i//batch_size + 1}: {str(batch_error)}")
+                    continue
+            
+            logger.info(f"Validated {len(existing_videos)}/{len(video_ids)} videos exist in Qdrant")
+            return existing_videos
+            
+        except Exception as e:
+            logger.error(f"Error validating video existence: {str(e)}")
+            return []
+
 # Global Qdrant client instance
 qdrant_client = QdrantVectorClient()

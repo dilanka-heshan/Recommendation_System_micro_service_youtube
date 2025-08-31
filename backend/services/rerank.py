@@ -72,7 +72,7 @@ class VideoReranker:
             logger.error(f"Error getting text representation for video: {str(e)}")
             return video.get('title', 'Unknown video')
 
-    @traceable(name="two_stage_reranking")
+    # @traceable(name="two_stage_reranking")  # Disabled due to circular reference issues
     def rerank_with_user_history(self, user_history: List[Dict[str, Any]], 
                                candidate_videos: List[Dict[str, Any]], 
                                top_k: int = 10, 
@@ -101,11 +101,11 @@ class VideoReranker:
             
             # Stage 1: Reranker model to get top 50 from 100 candidates
             stage1_candidates = self._stage1_reranker_filtering(user_history, candidate_videos, top_k=50)
-            #print(stage1_candidates)
+            logger.debug(f"Stage 1 candidates: {len(stage1_candidates)}")
             
             # Stage 2: Pairwise analysis for final ranking
             final_ranked = self._stage2_pairwise_analysis(user_history, stage1_candidates, top_k, agg)
-            print(final_ranked)
+            logger.debug(f"Final ranked: {len(final_ranked)}")
             
             logger.info(f"Two-stage reranking: {len(candidate_videos)} → {len(stage1_candidates)} → {len(final_ranked)}")
             
@@ -244,8 +244,8 @@ class VideoReranker:
                 if video_id and embedding:
                     history_vectors[video_id] = embedding
             
-            print(f"Candidate vectors loaded: {len(candidate_vectors)} out of {len(candidate_video_ids)}")
-            print(f"History vectors loaded: {len(history_vectors)} out of {len(history_video_ids)}")
+            logger.debug(f"Candidate vectors loaded: {len(candidate_vectors)} out of {len(candidate_video_ids)}")
+            logger.debug(f"History vectors loaded: {len(history_vectors)} out of {len(history_video_ids)}")
             
             if not candidate_vectors or not history_vectors:
                 logger.warning("Could not retrieve vectors from Qdrant, falling back to stage 1 results")
@@ -256,10 +256,10 @@ class VideoReranker:
             
             for candidate_idx, candidate in enumerate(top_20_candidates):
                 candidate_id = candidate.get('video_id')
-                print(f"Processing candidate {candidate_idx}: {candidate_id}")
+                logger.debug(f"Processing candidate {candidate_idx}: {candidate_id}")
                 
                 if candidate_id not in candidate_vectors:
-                    print(f"Candidate {candidate_id} not found in candidate_vectors")
+                    logger.debug(f"Candidate {candidate_id} not found in candidate_vectors")
                     continue
                     
                 candidate_vector = candidate_vectors[candidate_id]
@@ -268,7 +268,7 @@ class VideoReranker:
                 for history_video in user_history:
                     history_id = history_video.get('video_id')
                     if history_id not in history_vectors:
-                        print(f"History video {history_id} not found in history_vectors")
+                        logger.debug(f"History video {history_id} not found in history_vectors")
                         continue
                         
                     history_vector = history_vectors[history_id]
@@ -282,7 +282,7 @@ class VideoReranker:
                     # Weight by rating
                     weighted_similarity = similarity * (rating / 5.0)
                     similarities.append(weighted_similarity)
-                print(f"Similarities for candidate {candidate_idx}: {similarities}")
+                logger.debug(f"Similarities for candidate {candidate_idx}: {len(similarities)} calculated")
                 
                 # Mean or get max
                 if similarities:
@@ -293,8 +293,8 @@ class VideoReranker:
                     else:
                         similarity_scores[candidate_idx] = np.mean(similarities)
                 else:
-                    print(f"No similarities calculated for candidate {candidate_idx}")
-            print(f"Final similarity_scores: {similarity_scores}")
+                    logger.debug(f"No similarities calculated for candidate {candidate_idx}")
+            logger.debug(f"Final similarity_scores calculated for {len(similarity_scores)} candidates")
             # Build final results with similarity scores
             final_results = []
             for candidate_idx, score in similarity_scores.items():

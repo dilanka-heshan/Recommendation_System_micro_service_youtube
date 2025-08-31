@@ -65,7 +65,7 @@ class RecommendationOrchestrator:
             logger.error(f"Error building LangGraph workflow: {str(e)}")
             self.graph = None
     
-    @traceable(name="recommendation_pipeline")
+    # @traceable(name="recommendation_pipeline")  # Disabled due to circular reference issues
     def generate_recommendations(self, user_id: str, top_k: int = 10) -> Dict[str, Any]:
         """
         Main entry point for generating recommendations

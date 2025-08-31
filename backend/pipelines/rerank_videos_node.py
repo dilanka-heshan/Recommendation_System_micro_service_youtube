@@ -7,7 +7,7 @@ from backend.services.rerank import video_reranker
 
 logger = logging.getLogger(__name__)
 
-@traceable(name="Rerank Videos Node")
+# @traceable(name="Rerank Videos Node")  # Disabled due to circular reference issues
 def rerank_videos_node(state: PipelineState) -> PipelineState:
     """
     LangGraph node for two-stage video reranking:
@@ -60,7 +60,8 @@ def rerank_videos_node(state: PipelineState) -> PipelineState:
         )
         
         # Update candidate_videos with reranked results for diversity filtering
-        print(reranked_videos)
+        # Debug: Log instead of print
+        logger.debug(f"Reranked videos: {len(reranked_videos)}")
         state["candidate_videos"] = reranked_videos
         
         logger.info(f"Two-stage reranking completed: {len(candidate_videos)} → {len(reranked_videos)} videos for diversity filtering")
@@ -70,7 +71,8 @@ def rerank_videos_node(state: PipelineState) -> PipelineState:
             sample_video = reranked_videos[0]
             logger.info(f"Sample reranked video keys: {list(sample_video.keys())}")
             logger.info(f"Sample reranked video has final_score: {'final_score' in sample_video}")
-        print(state["candidate_videos"])
+        
+        logger.debug(f"Final candidate_videos count: {len(state['candidate_videos'])}")
         return state
         
     except Exception as e:

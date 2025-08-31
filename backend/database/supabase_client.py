@@ -151,11 +151,13 @@ class SupabaseClient:
         Update user embedding in users table
         """
         try:
-            response = self.client.table("users").upsert({
-                "user_id": user_id,
-                "embedding": embedding,
-                "updated_at": datetime.utcnow().isoformat()
-            }).execute()
+            # Convert embedding list to string format for storage (consistent with other methods)
+            embedding_str = str(embedding)
+            
+            response = self.client.table("users").update({
+                "embedding_id": embedding_str
+                # "updated_at": datetime.utcnow().isoformat()
+            }).eq("user_id", user_id).execute()
             
             return len(response.data) > 0
             
@@ -252,6 +254,215 @@ class SupabaseClient:
         except Exception as e:
             logger.error(f"Error creating newsletter for user {user_id}: {str(e)}")
             return None
+
+    # ============= USER VECTOR UPDATE PIPELINE METHODS =============
+    
+    def get_daily_feedback(self, start_date: str, end_date: str) -> List[Dict[str, Any]]:
+        """
+        Fetch daily feedback data for user vector update pipeline
+        Args:
+            start_date: ISO format date string (e.g., '2024-08-29')
+            end_date: ISO format date string (e.g., '2024-08-30')
+        Returns:
+            List of feedback records with user_id, video_id, rating, timestamp
+        """
+        try:
+            response = self.client.table("feedback").select(
+                "user_id, video_id, rating, timestamp"
+            ).gte("timestamp", start_date).lt("timestamp", end_date).execute()
+            
+            logger.info(f"Retrieved {len(response.data)} feedback records from {start_date} to {end_date}")
+            return response.data if response.data else []
+            
+        except Exception as e:
+            logger.error(f"Error fetching daily feedback: {str(e)}")
+            return []
+    
+    # def get_newsletter_click_data(self, start_date: str, end_date: str) -> List[Dict[str, Any]]:
+    #     """
+    #     Fetch newsletter click data for user vector update pipeline
+    #     Args:
+    #         start_date: ISO format date string
+    #         end_date: ISO format date string
+    #     Returns:
+    #         List of newsletter video records with user_id, video_id, clicked, sent_at
+    #     """
+    #     try:
+    #         # First get newsletters sent in the date range
+    #         newsletters_response = self.client.table("newsletters").select(
+    #             "id, user_id, sent_at"
+    #         ).gte("sent_at", start_date).lt("sent_at", end_date).execute()
+            
+    #         if not newsletters_response.data:
+    #             logger.info(f"No newsletters found from {start_date} to {end_date}")
+    #             return []
+            
+    #         newsletter_ids = [n["id"] for n in newsletters_response.data]
+    #         newsletter_user_map = {n["id"]: n["user_id"] for n in newsletters_response.data}
+    #         newsletter_date_map = {n["id"]: n["sent_at"] for n in newsletters_response.data}
+            
+    #         # Get video click data for these newsletters
+    #         videos_response = self.client.table("newsletter_videos").select(
+    #             "newsletter_id, video_id, clicked"
+    #         ).in_("newsletter_id", newsletter_ids).execute()
+            
+    #         # Combine data with user_id and sent_at
+    #         click_data = []
+    #         for video in videos_response.data if videos_response.data else []:
+    #             newsletter_id = video["newsletter_id"]
+    #             click_data.append({
+    #                 "user_id": newsletter_user_map.get(newsletter_id),
+    #                 "video_id": video["video_id"],
+    #                 "clicked": video["clicked"],
+    #                 "newsletter_id": newsletter_id,
+    #                 "sent_at": newsletter_date_map.get(newsletter_id)
+    #             })
+            
+    #         logger.info(f"Retrieved {len(click_data)} newsletter video records from {start_date} to {end_date}")
+    #         return click_data
+            
+    #     except Exception as e:
+    #         logger.error(f"Error fetching newsletter click data: {str(e)}")
+    #         return []
+    
+    def get_active_users_with_embeddings(self) -> List[Dict[str, Any]]:
+        """
+        Get all users who have embedding_id (active users with preference vectors)
+        Returns:
+            List of user records with user_id and embedding_id
+        """
+        try:
+            response = self.client.table("users").select(
+                "user_id, embedding_id"
+            ).neq("embedding_id", None).execute()  # Missing .execute()
+            
+            logger.info(f"Retrieved {len(response.data)} active users with embeddings")
+            return response.data if response.data else []
+            
+        except Exception as e:
+            logger.error(f"Error fetching active users with embeddings: {str(e)}")
+            return []
+    
+    def get_user_vectors_batch(self, user_ids: List[str]) -> Dict[str, Dict[str, Any]]:
+        """
+        Batch retrieve user embeddings for multiple users
+        Args:
+            user_ids: List of user IDs to fetch embeddings for
+        Returns:
+            Dict mapping user_id to {embedding_id: str, embedding: List[float]}
+        """
+        try:
+            response = self.client.table("users").select(
+                "user_id, embedding_id"
+            ).in_("user_id", user_ids).execute()
+            
+            user_vector_map = {}
+            for user_data in response.data if response.data else []:
+                user_id = user_data["user_id"]
+                embedding_str = user_data.get("embedding_id")
+                
+                if embedding_str:
+                    try:
+                        # Parse the embedding string to list of floats
+                        if isinstance(embedding_str, str):
+                            import ast
+                            embedding_list = ast.literal_eval(embedding_str.strip())
+                            if isinstance(embedding_list, list):
+                                user_vector_map[user_id] = {
+                                    "embedding_id": user_id,  # Using user_id as embedding_id for consistency
+                                    "embedding": [float(x) for x in embedding_list]
+                                }
+                        else:
+                            user_vector_map[user_id] = {
+                                "embedding_id": user_id,
+                                "embedding": [float(x) for x in embedding_str]
+                            }
+                    except (ValueError, SyntaxError) as parse_error:
+                        logger.error(f"Failed to parse embedding for user {user_id}: {str(parse_error)}")
+                        continue
+            
+            logger.info(f"Successfully retrieved embeddings for {len(user_vector_map)} users")
+            return user_vector_map
+            
+        except Exception as e:
+            logger.error(f"Error in batch user vector retrieval: {str(e)}")
+            return {}
+    
+    def update_user_embeddings_batch(self, user_vector_updates: Dict[str, List[float]]) -> Dict[str, bool]:
+        """
+        Batch update user embeddings
+        Args:
+            user_vector_updates: Dict mapping user_id to new embedding vector
+        Returns:
+            Dict mapping user_id to success status (bool)
+        """
+        update_results = {}
+        
+        try:
+            for user_id, embedding_vector in user_vector_updates.items():
+                try:
+                    # Convert embedding list to string format for storage
+                    embedding_str = str(embedding_vector)
+                    
+                    response = self.client.table("users").update({
+                        "embedding_id": embedding_str,
+                        #"updated_at": datetime.utcnow().isoformat()  # Check updated_at time need or not
+                    }).eq("user_id", user_id).execute()
+                    
+                    update_results[user_id] = len(response.data) > 0
+                    
+                except Exception as e:
+                    logger.error(f"Error updating embedding for user {user_id}: {str(e)}")
+                    update_results[user_id] = False
+            
+            successful_updates = sum(update_results.values())
+            logger.info(f"Batch embedding update: {successful_updates}/{len(user_vector_updates)} successful")
+            
+            return update_results
+            
+        except Exception as e:
+            logger.error(f"Error in batch embedding update: {str(e)}")
+            return {user_id: False for user_id in user_vector_updates.keys()}
+    
+#check below I is needed
+    # user table preference column need to use create initial vector
+    # def create_new_user_embeddings(self, user_embeddings: Dict[str, List[float]]) -> Dict[str, bool]:
+    #     """
+    #     Create embeddings for new users who don't have embedding_id yet
+    #     Args:
+    #         user_embeddings: Dict mapping user_id to embedding vector
+    #     Returns:
+    #         Dict mapping user_id to success status
+    #     """
+    #     creation_results = {}
+        
+    #     try:
+    #         for user_id, embedding_vector in user_embeddings.items():
+    #             try:
+    #                 embedding_str = str(embedding_vector)
+                    
+    #                 # Use upsert to handle both new and existing users
+    #                 response = self.client.table("users").upsert({
+    #                     "user_id": user_id,
+    #                     "embedding_id": embedding_str,
+    #                     "created_at": datetime.utcnow().isoformat(),
+    #                     "updated_at": datetime.utcnow().isoformat()
+    #                 }).execute()
+                    
+    #                 creation_results[user_id] = len(response.data) > 0
+                    
+    #             except Exception as e:
+    #                 logger.error(f"Error creating embedding for new user {user_id}: {str(e)}")
+    #                 creation_results[user_id] = False
+            
+    #         successful_creations = sum(creation_results.values())
+    #         logger.info(f"New user embedding creation: {successful_creations}/{len(user_embeddings)} successful")
+            
+    #         return creation_results
+            
+    #     except Exception as e:
+    #         logger.error(f"Error in new user embedding creation: {str(e)}")
+    #         return {user_id: False for user_id in user_embeddings.keys()}
 
 
 # Global instance
