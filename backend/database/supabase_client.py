@@ -423,6 +423,84 @@ class SupabaseClient:
         except Exception as e:
             logger.error(f"Error in batch embedding update: {str(e)}")
             return {user_id: False for user_id in user_vector_updates.keys()}
+
+    def get_random_videos(self, limit: int = 4) -> List[Dict[str, Any]]:
+        """
+        Fetch random videos from the videos table
+        
+        Args:
+            limit: Number of random videos to fetch (default: 4)
+            
+        Returns:
+            List of random video records
+        """
+        try:
+            # First, let's try to get any videos at all to test connection
+            test_response = self.client.table("videos").select("count", count="exact").execute()
+            logger.info(f"Total videos in database: {test_response.count}")
+            
+            if test_response.count == 0:
+                logger.warning("No videos found in database - table is empty")
+                return []
+            
+            # Since ORDER BY RANDOM() doesn't work with PostgREST, we'll fetch more videos
+            # and then randomly sample from them
+            fetch_limit = min(limit * 10, 100)  # Fetch up to 10x the requested amount, max 100
+            
+            response = self.client.table("videos").select("*").limit(fetch_limit).execute()
+            
+            if response.data and len(response.data) > 0:
+                import random
+                # Randomly shuffle and select the requested number
+                available_videos = response.data.copy()
+                random.shuffle(available_videos)
+                result = available_videos[:limit]
+                
+                logger.info(f"Retrieved {len(result)} random videos from {len(available_videos)} available")
+                return result
+            else:
+                logger.warning("No videos found in query response")
+                return []
+                
+        except Exception as e:
+            logger.error(f"Error fetching random videos: {str(e)}")
+            return []
+
+    def get_user_preferences(self, user_id: str) -> Optional[List[str]]:
+        """
+        Fetch user preferences from users table
+        Returns list of preference strings or None if user not found
+        """
+        try:
+            response = self.client.table("users").select("preferences").eq("user_id", user_id).execute()
+            
+            if response.data and len(response.data) > 0:
+                preferences = response.data[0].get("preferences")
+                
+                if preferences:
+                    # Handle different formats: string, list, or JSON string
+                    if isinstance(preferences, list):
+                        return preferences
+                    elif isinstance(preferences, str):
+                        try:
+                            # Try to parse as JSON if it's a string representation of list
+                            import json
+                            parsed_prefs = json.loads(preferences)
+                            if isinstance(parsed_prefs, list):
+                                return parsed_prefs
+                            else:
+                                # If it's just a string, split by comma or return as single item
+                                return [preferences.strip()]
+                        except json.JSONDecodeError:
+                            # If not JSON, treat as comma-separated string
+                            return [pref.strip() for pref in preferences.split(',') if pref.strip()]
+                
+            logger.warning(f"No preferences found for user_id: {user_id}")
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error fetching user preferences for {user_id}: {str(e)}")
+            return None
     
 #check below I is needed
     # user table preference column need to use create initial vector

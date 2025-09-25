@@ -87,3 +87,19 @@ external/
 # Temporary files
 *.tmp
 *.temp
+
+# Docker files (don't copy into container)
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# Git
+.git
+.gitignore
+
+# CI/CD
+.github/
+
+# Test files
+tests/
+*test*.json
