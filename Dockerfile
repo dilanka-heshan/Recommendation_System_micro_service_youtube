@@ -31,11 +31,7 @@ RUN useradd --create-home --shell /bin/bash app && \
 USER app
 
 # Expose the port that the app runs on
-EXPOSE 8001
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+EXPOSE 8080
 
 # Command to run the application
-CMD ["uvicorn", "backend.api.main:app", "--host", "0.0.0.0", "--port", "8001"]
+CMD ["sh", "-c", "uvicorn backend.api.main:app --host 0.0.0.0 --port ${PORT:-8080}"]
