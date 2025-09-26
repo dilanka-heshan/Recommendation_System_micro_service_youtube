@@ -33,5 +33,5 @@ USER app
 # Expose the port that the app runs on
 EXPOSE 8080
 
-# Command to run the application
-CMD ["sh", "-c", "uvicorn backend.api.main:app --host 0.0.0.0 --port ${PORT:-8080}"]
+# Command to run the application - hardcoded to port 8080
+CMD ["python", "-m", "uvicorn", "backend.api.main:app", "--host", "0.0.0.0", "--port", "8080"]
