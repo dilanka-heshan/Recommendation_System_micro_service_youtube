@@ -1,0 +1,16 @@
+# Load Testing Dependencies
+# Core load testing framework
+locust
+# Additional monitoring and analysis
+psutil
+memory-profiler
+matplotlib
+seaborn
+# For advanced metrics and monitoring
+prometheus-client
+# For database connection pooling during load tests
+asyncpg
+asyncio-mqtt
+# For generating realistic test data
+faker
+requests-mock
