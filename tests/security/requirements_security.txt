@@ -1,0 +1,14 @@
+# Core testing framework
+pytest>=8.0.0
+pytest-asyncio>=0.21.0
+
+# HTTP testing
+requests>=2.31.0
+httpx>=0.25.0
+
+# Security testing tools
+sqlparse>=0.4.4
+lxml>=4.9.0
+
+# Utilities
+python-dateutil>=2.8.0
