@@ -319,6 +319,85 @@ class VideoReranker:
             logger.error(f"Error in stage 2 pairwise analysis: {str(e)}")
             return stage1_candidates[:top_k]
 
+    def _fallback_reranking(self, user_history: List[Dict[str, Any]], 
+                          candidate_videos: List[Dict[str, Any]], 
+                          top_k: int) -> List[Dict[str, Any]]:
+        """
+        Fallback reranking when models are not available.
+        Simple ranking based on basic similarity to user history.
+        
+        Args:
+            user_history: List of high-rating videos
+            candidate_videos: List of candidate videos to rank
+            top_k: Number of videos to return
+            
+        Returns:
+            List of ranked videos with fallback scores
+        """
+        try:
+            logger.info("Using fallback reranking due to model unavailability")
+            
+            if not user_history:
+                # If no user history, return first top_k candidates with default scores
+                result = []
+                for i, video in enumerate(candidate_videos[:top_k]):
+                    video_copy = video.copy()
+                    video_copy["final_score"] = 0.5  # Default neutral score
+                    video_copy["final_rank"] = i + 1
+                    video_copy["fallback_ranking"] = True
+                    result.append(video_copy)
+                return result
+            
+            # Simple text-based similarity fallback
+            history_texts = []
+            for history_video in user_history:
+                text = self._get_video_text_representation(history_video, use_extractive_summary=False)
+                history_texts.append(text.lower())
+            
+            # Score candidates based on text overlap with history
+            scored_candidates = []
+            for candidate in candidate_videos:
+                candidate_text = self._get_video_text_representation(candidate, use_extractive_summary=False).lower()
+                
+                # Simple text similarity score based on word overlap
+                score = 0.0
+                candidate_words = set(candidate_text.split())
+                
+                for history_text in history_texts:
+                    history_words = set(history_text.split())
+                    if history_words and candidate_words:
+                        overlap = len(candidate_words.intersection(history_words))
+                        similarity = overlap / max(len(candidate_words), len(history_words))
+                        score = max(score, similarity)
+                
+                candidate_copy = candidate.copy()
+                candidate_copy["final_score"] = 0.3 + (score * 0.4)  # Scale to 0.3-0.7 range
+                candidate_copy["fallback_ranking"] = True
+                scored_candidates.append(candidate_copy)
+            
+            # Sort by score and add rankings
+            scored_candidates.sort(key=lambda x: x["final_score"], reverse=True)
+            
+            result = []
+            for i, video in enumerate(scored_candidates[:top_k]):
+                video["final_rank"] = i + 1
+                result.append(video)
+            
+            logger.info(f"Fallback reranking completed: {len(candidate_videos)} → {len(result)}")
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error in fallback reranking: {str(e)}")
+            # Final fallback: just return first top_k with minimal scores
+            result = []
+            for i, video in enumerate(candidate_videos[:top_k]):
+                video_copy = video.copy()
+                video_copy["final_score"] = 0.4
+                video_copy["final_rank"] = i + 1
+                video_copy["fallback_ranking"] = True
+                result.append(video_copy)
+            return result
+
     
 
 # Global reranker instance
