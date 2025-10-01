@@ -1,14 +1,23 @@
 from typing import List, Dict, Any, Optional
 from backend.database.supabase_client import supabase_client
 import logging
+import time
+
+try:
+    import psutil
+    PSUTIL_AVAILABLE = True
+except ImportError:
+    PSUTIL_AVAILABLE = False
+
+logger = logging.getLogger(__name__)
 
 try:
     from sentence_transformers import SentenceTransformer
     EMBEDDING_MODEL_AVAILABLE = True
-except ImportError:
+    logger.info("Embedding model available")
+except ImportError as e:
     EMBEDDING_MODEL_AVAILABLE = False
-
-logger = logging.getLogger(__name__)
+    logger.error(f"Failed to import sentence_transformers: {e}")
 
 class UserPreferencesService:
     """
@@ -19,15 +28,84 @@ class UserPreferencesService:
     def __init__(self):
         self.client = supabase_client
         self.embed_model = None
+        self._model_load_attempted = False
+        self._model_load_failed = False
+        self._last_load_attempt = 0
+        self._load_retry_delay = 300  # 5 minutes between retry attempts
+    
+    def _ensure_embedding_model_loaded(self) -> bool:
+        """
+        Lazy loading of embedding model with retry logic and comprehensive error handling
         
-        # Initialize embedding model (same as reranking service)
-        if EMBEDDING_MODEL_AVAILABLE:
+        Returns:
+            bool: True if model is loaded and functional, False otherwise
+        """
+        current_time = time.time()
+        
+        # If model is already loaded and working, return True
+        if self.embed_model is not None:
+            return True
+            
+        # If we recently failed to load, don't retry immediately
+        if self._model_load_failed and (current_time - self._last_load_attempt) < self._load_retry_delay:
+            logger.debug(f"Skipping model load retry - waiting {self._load_retry_delay}s since last attempt")
+            return False
+            
+        # Check if imports are available
+        if not EMBEDDING_MODEL_AVAILABLE:
+            logger.error("sentence_transformers not available - cannot load embedding model")
+            self._model_load_failed = True
+            self._last_load_attempt = current_time
+            return False
+            
+        # Check system memory before loading (model needs ~1GB)
+        if PSUTIL_AVAILABLE:
             try:
-                self.embed_model = SentenceTransformer("BAAI/bge-base-en")
-                logger.info("User preferences embedding model loaded successfully")
-            except Exception as e:
-                logger.error(f"Failed to load user preferences embedding model: {str(e)}")
-                self.embed_model = None
+                available_memory_gb = psutil.virtual_memory().available / (1024**3)
+                if available_memory_gb < 1.5:
+                    logger.warning(f"Low memory ({available_memory_gb:.1f}GB available) - may fail to load embedding model")
+            except Exception as mem_e:
+                logger.warning(f"Could not check memory usage: {mem_e}")
+        else:
+            logger.debug("psutil not available - cannot check memory usage")
+            
+        # Attempt to load the model
+        self._last_load_attempt = current_time
+        try:
+            logger.info("Loading embedding model BAAI/bge-base-en...")
+            start_time = time.time()
+            
+            self.embed_model = SentenceTransformer("BAAI/bge-base-en")
+            
+            # Validate model functionality with a test embedding
+            test_embedding = self.embed_model.encode("test", normalize_embeddings=True)
+            if len(test_embedding) != 768:
+                raise ValueError(f"Model produced incorrect embedding dimension: {len(test_embedding)} (expected 768)")
+                
+            load_time = time.time() - start_time
+            logger.info(f"Embedding model loaded successfully in {load_time:.2f}s")
+            
+            self._model_load_attempted = True
+            self._model_load_failed = False
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to load embedding model: {type(e).__name__}: {str(e)}")
+            logger.error(f"Model loading attempt failed after {time.time() - start_time:.2f}s")
+            
+            self.embed_model = None
+            self._model_load_attempted = True
+            self._model_load_failed = True
+            
+            # Log specific error types for debugging
+            if "OutOfMemoryError" in str(e) or "CUDA out of memory" in str(e):
+                logger.error("Model loading failed due to insufficient memory")
+            elif "ConnectTimeout" in str(e) or "ReadTimeout" in str(e):
+                logger.error("Model loading failed due to network timeout - model may need to be downloaded")
+            elif "404" in str(e) or "Repository" in str(e):
+                logger.error("Model repository not found - check model name")
+                
+            return False
     
     def fetch_user_preferences_data(self, user_id: str) -> Dict[str, Any]:
         """
@@ -51,7 +129,7 @@ class UserPreferencesService:
                     user_embedding = created_embedding
                     logger.info(f"Successfully created embedding from preferences for user {user_id}")
                 else:
-                    logger.warning(f"Failed to create embedding from preferences for user {user_id}. Using empty state.")
+                    logger.error(f"Failed to create embedding from preferences for user {user_id}. Reason: {self._get_embedding_failure_reason()}")
                     return self._create_empty_user_state(user_id)
             
             # Fetch user's high-rating videos from feedback
@@ -125,8 +203,14 @@ class UserPreferencesService:
             List[float]: Created 768-dimensional embedding vector or None if failed
         """
         try:
-            if not EMBEDDING_MODEL_AVAILABLE or not self.embed_model:
-                logger.warning(f"Embedding model not available for creating user embedding for {user_id}")
+            # Use lazy loading with detailed error reporting
+            if not self._ensure_embedding_model_loaded():
+                if not EMBEDDING_MODEL_AVAILABLE:
+                    logger.error(f"Cannot create embedding for user {user_id}: sentence_transformers not installed")
+                elif self._model_load_failed:
+                    logger.error(f"Cannot create embedding for user {user_id}: model loading failed (retry in {self._load_retry_delay}s)")
+                else:
+                    logger.error(f"Cannot create embedding for user {user_id}: model not available for unknown reason")
                 return None
                 
             # Fetch user preferences from database
@@ -178,6 +262,19 @@ class UserPreferencesService:
             logger.error(f"Error creating user embedding from preferences for {user_id}: {str(e)}")
             return None
 
+    def _get_embedding_failure_reason(self) -> str:
+        """
+        Get detailed reason for embedding creation failure
+        """
+        if not EMBEDDING_MODEL_AVAILABLE:
+            return "sentence_transformers not installed"
+        elif self._model_load_failed:
+            return "model loading failed - check logs for details"
+        elif self.embed_model is None:
+            return "model not loaded yet"
+        else:
+            return "unknown reason"
+    
     def _create_empty_user_state(self, user_id: str) -> Dict[str, Any]:
         """
         Create empty user state for new users with 768-dimensional zero vector
