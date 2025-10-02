@@ -31,7 +31,7 @@ class UserPreferencesService:
         self._model_load_attempted = False
         self._model_load_failed = False
         self._last_load_attempt = 0
-        self._load_retry_delay = 300  # 5 minutes between retry attempts
+        self._load_retry_delay = 30  # 1 minute between retry attempts
     
     def _ensure_embedding_model_loaded(self) -> bool:
         """

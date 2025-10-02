@@ -22,6 +22,13 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
+# Pre-load embedding model to cache it during build (improves startup time)
+# This downloads and caches the BAAI/bge-base-en model (~500MB)
+RUN python -c "print('Pre-loading embedding model...'); \
+    from sentence_transformers import SentenceTransformer; \
+    model = SentenceTransformer('BAAI/bge-base-en'); \
+    print('Embedding model cached successfully')"
+
 # Copy the entire application
 COPY . .
 
