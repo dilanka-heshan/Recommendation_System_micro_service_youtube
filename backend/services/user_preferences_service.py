@@ -75,7 +75,7 @@ class UserPreferencesService:
             logger.info("Loading embedding model BAAI/bge-base-en...")
             start_time = time.time()
             
-            self.embed_model = SentenceTransformer("BAAI/bge-base-en")
+            self.embed_model = SentenceTransformer("/app/models/bge-base-en")
             
             # Validate model functionality with a test embedding
             test_embedding = self.embed_model.encode("test", normalize_embeddings=True)

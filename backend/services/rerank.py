@@ -30,8 +30,8 @@ class VideoReranker:
         
         if DEPENDENCIES_AVAILABLE:
             try:
-                self.embed_model = SentenceTransformer("BAAI/bge-base-en")
-                self.rerank_model = CrossEncoder("BAAI/bge-reranker-base")
+                self.embed_model = SentenceTransformer("/app/models/bge-base-en")
+                self.rerank_model = CrossEncoder("/app/models/bge-reranker-base")
                 logger.info("Reranking models loaded successfully")
             except Exception as e:
                 logger.error(f"Failed to load reranking models: {str(e)}")

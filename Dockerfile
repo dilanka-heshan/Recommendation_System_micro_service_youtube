@@ -22,16 +22,16 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Pre-load embedding and reranking models to cache them during build (improves startup time)
-# This downloads and caches the models (~800MB total)
-RUN python -c "from sentence_transformers import SentenceTransformer, CrossEncoder; \
-    print('Downloading BAAI/bge-base-en embedding model...'); \
-    SentenceTransformer('BAAI/bge-base-en'); \
-    print('BAAI/bge-base-en model cached successfully')" \
- && python -c "from sentence_transformers import CrossEncoder; \
-    print('Downloading BAAI/bge-reranker-base model...'); \
-    CrossEncoder('BAAI/bge-reranker-base'); \
-    print('BAAI/bge-reranker-base model cached successfully')"
+# Pre-download and bundle models into the Docker image for instant availability
+# This saves models to /app/models directory (~800MB total) - no network fetch needed at runtime
+RUN mkdir -p /app/models && \
+    python -c "from sentence_transformers import SentenceTransformer, CrossEncoder; \
+        print('Downloading and bundling BAAI/bge-base-en embedding model...'); \
+        SentenceTransformer('BAAI/bge-base-en').save('/app/models/bge-base-en'); \
+        print('BAAI/bge-base-en model bundled successfully'); \
+        print('Downloading and bundling BAAI/bge-reranker-base model...'); \
+        CrossEncoder('BAAI/bge-reranker-base').save('/app/models/bge-reranker-base'); \
+        print('BAAI/bge-reranker-base model bundled successfully')"
 
 # Copy the entire application
 COPY . .
