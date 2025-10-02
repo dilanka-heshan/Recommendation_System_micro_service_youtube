@@ -22,12 +22,16 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Pre-load embedding model to cache it during build (improves startup time)
-# This downloads and caches the BAAI/bge-base-en model (~500MB)
-RUN python -c "print('Pre-loading embedding model...'); \
-    from sentence_transformers import SentenceTransformer; \
-    model = SentenceTransformer('BAAI/bge-base-en'); \
-    print('Embedding model cached successfully')"
+# Pre-load embedding and reranking models to cache them during build (improves startup time)
+# This downloads and caches the models (~800MB total)
+RUN python -c "from sentence_transformers import SentenceTransformer, CrossEncoder; \
+    print('Downloading BAAI/bge-base-en embedding model...'); \
+    SentenceTransformer('BAAI/bge-base-en'); \
+    print('BAAI/bge-base-en model cached successfully')" \
+ && python -c "from sentence_transformers import CrossEncoder; \
+    print('Downloading BAAI/bge-reranker-base model...'); \
+    CrossEncoder('BAAI/bge-reranker-base'); \
+    print('BAAI/bge-reranker-base model cached successfully')"
 
 # Copy the entire application
 COPY . .
