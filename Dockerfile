@@ -22,21 +22,35 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
+# Set environment variables for model handling
+ENV TRANSFORMERS_CACHE=/app/.cache
+ENV HF_HOME=/app/.cache
+ENV TOKENIZERS_PARALLELISM=false
+
 # Pre-download and bundle models into the Docker image for faster startup
-# This is optional - if it fails, the app will fallback to downloading at runtime
-RUN mkdir -p /app/models && \
-    python -c "import sys; \
+# Create necessary directories and download models with proper error handling
+RUN mkdir -p /app/models /app/.cache && \
+    pip install --no-cache-dir --upgrade transformers tokenizers sentence-transformers && \
+    python -c "import os; os.environ['TOKENIZERS_PARALLELISM']='false'; \
+    import sys; \
     try: \
         from sentence_transformers import SentenceTransformer, CrossEncoder; \
+        import warnings; warnings.filterwarnings('ignore'); \
         print('Downloading and bundling BAAI/bge-base-en embedding model...'); \
-        SentenceTransformer('BAAI/bge-base-en').save('/app/models/bge-base-en'); \
+        model1 = SentenceTransformer('BAAI/bge-base-en', trust_remote_code=True); \
+        model1.save('/app/models/bge-base-en'); \
         print('BAAI/bge-base-en model bundled successfully'); \
         print('Downloading and bundling BAAI/bge-reranker-base model...'); \
-        CrossEncoder('BAAI/bge-reranker-base').save('/app/models/bge-reranker-base'); \
+        model2 = CrossEncoder('BAAI/bge-reranker-base', trust_remote_code=True); \
+        model2.save('/app/models/bge-reranker-base'); \
         print('BAAI/bge-reranker-base model bundled successfully'); \
+        print('Verifying models...'); \
+        assert os.path.exists('/app/models/bge-base-en'), 'Embedding model not found'; \
+        assert os.path.exists('/app/models/bge-reranker-base'), 'Reranker model not found'; \
+        print('All models verified successfully'); \
     except Exception as e: \
         print(f'Model bundling failed: {e}. Models will be downloaded at runtime.'); \
-        sys.exit(0)" || echo "Model bundling failed, continuing build..."
+        import traceback; traceback.print_exc()" || echo "Model bundling failed, continuing build..."
 
 # Copy the entire application
 COPY . .

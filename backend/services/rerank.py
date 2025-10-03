@@ -30,18 +30,31 @@ class VideoReranker:
         
         if DEPENDENCIES_AVAILABLE:
             try:
+                # Set tokenizer environment to avoid parallelism issues
+                import os
+                os.environ['TOKENIZERS_PARALLELISM'] = 'false'
+                
                 # Try local bundled models first, fallback to HuggingFace
                 try:
-                    self.embed_model = SentenceTransformer("/app/models/bge-base-en")
-                    self.rerank_model = CrossEncoder("/app/models/bge-reranker-base")
-                    logger.info("Reranking models loaded successfully from bundled path")
+                    if os.path.exists("/app/models/bge-base-en") and os.path.exists("/app/models/bge-reranker-base"):
+                        self.embed_model = SentenceTransformer("/app/models/bge-base-en", trust_remote_code=True)
+                        self.rerank_model = CrossEncoder("/app/models/bge-reranker-base", trust_remote_code=True)
+                        logger.info("Reranking models loaded successfully from bundled path")
+                    else:
+                        raise FileNotFoundError("Bundled model paths not found")
                 except Exception as local_e:
                     logger.warning(f"Failed to load bundled models: {local_e}. Trying HuggingFace...")
-                    self.embed_model = SentenceTransformer("BAAI/bge-base-en")
-                    self.rerank_model = CrossEncoder("BAAI/bge-reranker-base")
-                    logger.info("Reranking models loaded successfully from HuggingFace")
+                    try:
+                        self.embed_model = SentenceTransformer("BAAI/bge-base-en", trust_remote_code=True)
+                        self.rerank_model = CrossEncoder("BAAI/bge-reranker-base", trust_remote_code=True)
+                        logger.info("Reranking models loaded successfully from HuggingFace")
+                    except Exception as hf_e:
+                        logger.error(f"Failed to load from HuggingFace: {hf_e}")
+                        raise hf_e
             except Exception as e:
                 logger.error(f"Failed to load reranking models: {str(e)}")
+                self.embed_model = None
+                self.rerank_model = None
 
     def _get_video_text_representation(self, video: Dict[str, Any], use_extractive_summary: bool = True) -> str:
         """

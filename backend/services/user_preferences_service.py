@@ -76,13 +76,23 @@ class UserPreferencesService:
             start_time = time.time()
             
             # Try local bundled model first, fallback to HuggingFace
+            import os
+            os.environ['TOKENIZERS_PARALLELISM'] = 'false'
+            
             try:
-                self.embed_model = SentenceTransformer("/app/models/bge-base-en")
-                logger.info("Loaded embedding model from bundled path")
+                if os.path.exists("/app/models/bge-base-en"):
+                    self.embed_model = SentenceTransformer("/app/models/bge-base-en", trust_remote_code=True)
+                    logger.info("Loaded embedding model from bundled path")
+                else:
+                    raise FileNotFoundError("Bundled model path not found")
             except Exception as local_e:
                 logger.warning(f"Failed to load bundled model: {local_e}. Trying HuggingFace...")
-                self.embed_model = SentenceTransformer("BAAI/bge-base-en")
-                logger.info("Loaded embedding model from HuggingFace")
+                try:
+                    self.embed_model = SentenceTransformer("BAAI/bge-base-en", trust_remote_code=True)
+                    logger.info("Loaded embedding model from HuggingFace")
+                except Exception as hf_e:
+                    logger.error(f"Failed to load from HuggingFace: {hf_e}")
+                    raise hf_e
             
             # Validate model functionality with a test embedding
             test_embedding = self.embed_model.encode("test", normalize_embeddings=True)
