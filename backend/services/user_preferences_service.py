@@ -85,18 +85,25 @@ class UserPreferencesService:
             try:
                 bundled_path = "/app/models/bge-base-en"
                 if os.path.exists(bundled_path) and os.path.isdir(bundled_path):
-                    self.embed_model = SentenceTransformer(bundled_path, trust_remote_code=True)
-                    logger.info("Loaded embedding model from bundled path")
+                    # BGE model with specific tokenizer handling
+                    import warnings
+                    warnings.filterwarnings("ignore", category=FutureWarning)
+                    
+                    self.embed_model = SentenceTransformer(bundled_path, trust_remote_code=True, use_auth_token=False)
+                    logger.info("Loaded BGE embedding model from bundled path")
                     model_loaded = True
             except Exception as local_e:
-                logger.warning(f"Failed to load bundled model: {local_e}")
+                logger.warning(f"Failed to load bundled BGE model: {local_e}")
             
-            # Fallback to HuggingFace if local loading failed
+            # Fallback to HuggingFace BGE model if local loading failed
             if not model_loaded:
                 try:
-                    logger.info("Trying HuggingFace model download...")
-                    self.embed_model = SentenceTransformer("BAAI/bge-base-en", trust_remote_code=True)
-                    logger.info("Loaded embedding model from HuggingFace")
+                    logger.info("Trying HuggingFace BGE model download...")
+                    import warnings
+                    warnings.filterwarnings("ignore", category=FutureWarning)
+                    
+                    self.embed_model = SentenceTransformer("BAAI/bge-base-en", trust_remote_code=True, use_auth_token=False)
+                    logger.info("Loaded BGE embedding model from HuggingFace")
                     model_loaded = True
                 except Exception as hf_e:
                     logger.error(f"Failed to load from HuggingFace: {hf_e}")

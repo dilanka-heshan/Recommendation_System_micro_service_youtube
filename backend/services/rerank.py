@@ -44,20 +44,27 @@ class VideoReranker:
                     if (os.path.exists(embed_path) and os.path.isdir(embed_path) and 
                         os.path.exists(rerank_path) and os.path.isdir(rerank_path)):
                         
-                        self.embed_model = SentenceTransformer(embed_path, trust_remote_code=True)
-                        self.rerank_model = CrossEncoder(rerank_path, trust_remote_code=True)
-                        logger.info("Reranking models loaded successfully from bundled path")
+                        # BGE models with specific tokenizer handling
+                        import warnings
+                        warnings.filterwarnings("ignore", category=FutureWarning)
+                        
+                        self.embed_model = SentenceTransformer(embed_path, trust_remote_code=True, use_auth_token=False)
+                        self.rerank_model = CrossEncoder(rerank_path, trust_remote_code=True, use_auth_token=False)
+                        logger.info("BGE models loaded successfully from bundled path")
                         models_loaded = True
                 except Exception as local_e:
-                    logger.warning(f"Failed to load bundled models: {local_e}")
+                    logger.warning(f"Failed to load bundled BGE models: {local_e}")
                 
-                # Fallback to HuggingFace if local loading failed
+                # Fallback to HuggingFace BGE models if local loading failed
                 if not models_loaded:
                     try:
-                        logger.info("Trying HuggingFace model downloads...")
-                        self.embed_model = SentenceTransformer("BAAI/bge-base-en", trust_remote_code=True)
-                        self.rerank_model = CrossEncoder("BAAI/bge-reranker-base", trust_remote_code=True)
-                        logger.info("Reranking models loaded successfully from HuggingFace")
+                        logger.info("Trying HuggingFace BGE model downloads...")
+                        import warnings
+                        warnings.filterwarnings("ignore", category=FutureWarning)
+                        
+                        self.embed_model = SentenceTransformer("BAAI/bge-base-en", trust_remote_code=True, use_auth_token=False)
+                        self.rerank_model = CrossEncoder("BAAI/bge-reranker-base", trust_remote_code=True, use_auth_token=False)
+                        logger.info("BGE models loaded successfully from HuggingFace")
                         models_loaded = True
                     except Exception as hf_e:
                         logger.error(f"Failed to load from HuggingFace: {hf_e}")

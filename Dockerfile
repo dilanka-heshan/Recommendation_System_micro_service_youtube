@@ -22,17 +22,20 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Set environment variables for model handling
+# Set environment variables for model handling and BGE compatibility
 ENV TRANSFORMERS_CACHE=/app/.cache
 ENV HF_HOME=/app/.cache
 ENV TOKENIZERS_PARALLELISM=false
 ENV MODEL_CACHE_DIR=/app/models
 ENV SENTENCE_TRANSFORMERS_HOME=/app/.cache
+ENV PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
+ENV TF_CPP_MIN_LOG_LEVEL=3
 
 # Pre-download and bundle models into the Docker image for faster startup
 # Create necessary directories and download models with proper error handling
 RUN mkdir -p /app/models /app/.cache && \
-    pip install --no-cache-dir --upgrade transformers tokenizers sentence-transformers && \
+    pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir protobuf==3.20.3 transformers==4.21.0 tokenizers==0.12.1 sentence-transformers==2.2.2 && \
     python -c "import os; os.environ['TOKENIZERS_PARALLELISM']='false'; \
     import sys; \
     try: \
