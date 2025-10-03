@@ -30,9 +30,16 @@ class VideoReranker:
         
         if DEPENDENCIES_AVAILABLE:
             try:
-                self.embed_model = SentenceTransformer("/app/models/bge-base-en")
-                self.rerank_model = CrossEncoder("/app/models/bge-reranker-base")
-                logger.info("Reranking models loaded successfully")
+                # Try local bundled models first, fallback to HuggingFace
+                try:
+                    self.embed_model = SentenceTransformer("/app/models/bge-base-en")
+                    self.rerank_model = CrossEncoder("/app/models/bge-reranker-base")
+                    logger.info("Reranking models loaded successfully from bundled path")
+                except Exception as local_e:
+                    logger.warning(f"Failed to load bundled models: {local_e}. Trying HuggingFace...")
+                    self.embed_model = SentenceTransformer("BAAI/bge-base-en")
+                    self.rerank_model = CrossEncoder("BAAI/bge-reranker-base")
+                    logger.info("Reranking models loaded successfully from HuggingFace")
             except Exception as e:
                 logger.error(f"Failed to load reranking models: {str(e)}")
 

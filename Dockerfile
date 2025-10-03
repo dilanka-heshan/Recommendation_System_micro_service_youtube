@@ -22,16 +22,21 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Pre-download and bundle models into the Docker image for instant availability
-# This saves models to /app/models directory (~800MB total) - no network fetch needed at runtime
+# Pre-download and bundle models into the Docker image for faster startup
+# This is optional - if it fails, the app will fallback to downloading at runtime
 RUN mkdir -p /app/models && \
-    python -c "from sentence_transformers import SentenceTransformer, CrossEncoder; \
+    python -c "import sys; \
+    try: \
+        from sentence_transformers import SentenceTransformer, CrossEncoder; \
         print('Downloading and bundling BAAI/bge-base-en embedding model...'); \
         SentenceTransformer('BAAI/bge-base-en').save('/app/models/bge-base-en'); \
         print('BAAI/bge-base-en model bundled successfully'); \
         print('Downloading and bundling BAAI/bge-reranker-base model...'); \
         CrossEncoder('BAAI/bge-reranker-base').save('/app/models/bge-reranker-base'); \
-        print('BAAI/bge-reranker-base model bundled successfully')"
+        print('BAAI/bge-reranker-base model bundled successfully'); \
+    except Exception as e: \
+        print(f'Model bundling failed: {e}. Models will be downloaded at runtime.'); \
+        sys.exit(0)" || echo "Model bundling failed, continuing build..."
 
 # Copy the entire application
 COPY . .
@@ -44,5 +49,8 @@ USER app
 # Expose the port that the app runs on
 EXPOSE 8080
 
-# Command to run the application - hardcoded to port 8080
-CMD ["python", "-m", "uvicorn", "backend.api.main:app", "--host", "0.0.0.0", "--port", "8080"]
+# Set startup timeout to handle model loading
+ENV STARTUP_TIMEOUT=600
+
+# Command to run the application - hardcoded to port 8080  
+CMD ["python", "-m", "uvicorn", "backend.api.main:app", "--host", "0.0.0.0", "--port", "8080", "--timeout-keep-alive", "300"]

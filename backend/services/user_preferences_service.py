@@ -72,10 +72,17 @@ class UserPreferencesService:
         # Attempt to load the model
         self._last_load_attempt = current_time
         try:
-            logger.info("Loading embedding model BAAI/bge-base-en...")
+            logger.info("Loading embedding model...")
             start_time = time.time()
             
-            self.embed_model = SentenceTransformer("/app/models/bge-base-en")
+            # Try local bundled model first, fallback to HuggingFace
+            try:
+                self.embed_model = SentenceTransformer("/app/models/bge-base-en")
+                logger.info("Loaded embedding model from bundled path")
+            except Exception as local_e:
+                logger.warning(f"Failed to load bundled model: {local_e}. Trying HuggingFace...")
+                self.embed_model = SentenceTransformer("BAAI/bge-base-en")
+                logger.info("Loaded embedding model from HuggingFace")
             
             # Validate model functionality with a test embedding
             test_embedding = self.embed_model.encode("test", normalize_embeddings=True)
