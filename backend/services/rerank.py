@@ -34,23 +34,38 @@ class VideoReranker:
                 import os
                 os.environ['TOKENIZERS_PARALLELISM'] = 'false'
                 
-                # Try local bundled models first, fallback to HuggingFace
+                models_loaded = False
+                
+                # Try local bundled models first
                 try:
-                    if os.path.exists("/app/models/bge-base-en") and os.path.exists("/app/models/bge-reranker-base"):
-                        self.embed_model = SentenceTransformer("/app/models/bge-base-en", trust_remote_code=True)
-                        self.rerank_model = CrossEncoder("/app/models/bge-reranker-base", trust_remote_code=True)
+                    embed_path = "/app/models/bge-base-en"
+                    rerank_path = "/app/models/bge-reranker-base"
+                    
+                    if (os.path.exists(embed_path) and os.path.isdir(embed_path) and 
+                        os.path.exists(rerank_path) and os.path.isdir(rerank_path)):
+                        
+                        self.embed_model = SentenceTransformer(embed_path, trust_remote_code=True)
+                        self.rerank_model = CrossEncoder(rerank_path, trust_remote_code=True)
                         logger.info("Reranking models loaded successfully from bundled path")
-                    else:
-                        raise FileNotFoundError("Bundled model paths not found")
+                        models_loaded = True
                 except Exception as local_e:
-                    logger.warning(f"Failed to load bundled models: {local_e}. Trying HuggingFace...")
+                    logger.warning(f"Failed to load bundled models: {local_e}")
+                
+                # Fallback to HuggingFace if local loading failed
+                if not models_loaded:
                     try:
+                        logger.info("Trying HuggingFace model downloads...")
                         self.embed_model = SentenceTransformer("BAAI/bge-base-en", trust_remote_code=True)
                         self.rerank_model = CrossEncoder("BAAI/bge-reranker-base", trust_remote_code=True)
                         logger.info("Reranking models loaded successfully from HuggingFace")
+                        models_loaded = True
                     except Exception as hf_e:
                         logger.error(f"Failed to load from HuggingFace: {hf_e}")
-                        raise hf_e
+                        
+                if not models_loaded:
+                    logger.error("Failed to load reranking models from both local and HuggingFace")
+                    self.embed_model = None
+                    self.rerank_model = None
             except Exception as e:
                 logger.error(f"Failed to load reranking models: {str(e)}")
                 self.embed_model = None

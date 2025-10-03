@@ -26,6 +26,8 @@ RUN pip install --no-cache-dir --upgrade pip && \
 ENV TRANSFORMERS_CACHE=/app/.cache
 ENV HF_HOME=/app/.cache
 ENV TOKENIZERS_PARALLELISM=false
+ENV MODEL_CACHE_DIR=/app/models
+ENV SENTENCE_TRANSFORMERS_HOME=/app/.cache
 
 # Pre-download and bundle models into the Docker image for faster startup
 # Create necessary directories and download models with proper error handling

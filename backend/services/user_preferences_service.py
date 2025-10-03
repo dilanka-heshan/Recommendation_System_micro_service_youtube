@@ -75,24 +75,34 @@ class UserPreferencesService:
             logger.info("Loading embedding model...")
             start_time = time.time()
             
-            # Try local bundled model first, fallback to HuggingFace
+            # Set environment for tokenizer
             import os
             os.environ['TOKENIZERS_PARALLELISM'] = 'false'
             
+            model_loaded = False
+            
+            # Try local bundled model first
             try:
-                if os.path.exists("/app/models/bge-base-en"):
-                    self.embed_model = SentenceTransformer("/app/models/bge-base-en", trust_remote_code=True)
+                bundled_path = "/app/models/bge-base-en"
+                if os.path.exists(bundled_path) and os.path.isdir(bundled_path):
+                    self.embed_model = SentenceTransformer(bundled_path, trust_remote_code=True)
                     logger.info("Loaded embedding model from bundled path")
-                else:
-                    raise FileNotFoundError("Bundled model path not found")
+                    model_loaded = True
             except Exception as local_e:
-                logger.warning(f"Failed to load bundled model: {local_e}. Trying HuggingFace...")
+                logger.warning(f"Failed to load bundled model: {local_e}")
+            
+            # Fallback to HuggingFace if local loading failed
+            if not model_loaded:
                 try:
+                    logger.info("Trying HuggingFace model download...")
                     self.embed_model = SentenceTransformer("BAAI/bge-base-en", trust_remote_code=True)
                     logger.info("Loaded embedding model from HuggingFace")
+                    model_loaded = True
                 except Exception as hf_e:
                     logger.error(f"Failed to load from HuggingFace: {hf_e}")
-                    raise hf_e
+                    
+            if not model_loaded:
+                raise Exception("Failed to load embedding model from both local and HuggingFace")
             
             # Validate model functionality with a test embedding
             test_embedding = self.embed_model.encode("test", normalize_embeddings=True)
