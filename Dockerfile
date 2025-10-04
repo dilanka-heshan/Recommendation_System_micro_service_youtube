@@ -42,11 +42,11 @@ RUN mkdir -p /app/models /app/.cache && \
         from sentence_transformers import SentenceTransformer, CrossEncoder; \
         import warnings; warnings.filterwarnings('ignore'); \
         print('Downloading and bundling BAAI/bge-base-en embedding model...'); \
-        model1 = SentenceTransformer('BAAI/bge-base-en', trust_remote_code=True, use_auth_token=False); \
+        model1 = SentenceTransformer('BAAI/bge-base-en', trust_remote_code=True); \
         model1.save('/app/models/bge-base-en'); \
         print('BAAI/bge-base-en model bundled successfully'); \
         print('Downloading and bundling BAAI/bge-reranker-base model...'); \
-        model2 = CrossEncoder('BAAI/bge-reranker-base', trust_remote_code=True, use_auth_token=False); \
+        model2 = CrossEncoder('BAAI/bge-reranker-base', trust_remote_code=True); \
         model2.save('/app/models/bge-reranker-base'); \
         print('BAAI/bge-reranker-base model bundled successfully'); \
         print('Verifying models...'); \

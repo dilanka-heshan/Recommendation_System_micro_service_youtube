@@ -48,8 +48,8 @@ class VideoReranker:
                         import warnings
                         warnings.filterwarnings("ignore", category=FutureWarning)
                         
-                        self.embed_model = SentenceTransformer(embed_path, trust_remote_code=True, use_auth_token=False)
-                        self.rerank_model = CrossEncoder(rerank_path, trust_remote_code=True, use_auth_token=False)
+                        self.embed_model = SentenceTransformer(embed_path, trust_remote_code=True)
+                        self.rerank_model = CrossEncoder(rerank_path, trust_remote_code=True)
                         logger.info("BGE models loaded successfully from bundled path")
                         models_loaded = True
                 except Exception as local_e:
@@ -62,8 +62,8 @@ class VideoReranker:
                         import warnings
                         warnings.filterwarnings("ignore", category=FutureWarning)
                         
-                        self.embed_model = SentenceTransformer("BAAI/bge-base-en", trust_remote_code=True, use_auth_token=False)
-                        self.rerank_model = CrossEncoder("BAAI/bge-reranker-base", trust_remote_code=True, use_auth_token=False)
+                        self.embed_model = SentenceTransformer("BAAI/bge-base-en", trust_remote_code=True)
+                        self.rerank_model = CrossEncoder("BAAI/bge-reranker-base", trust_remote_code=True)
                         logger.info("BGE models loaded successfully from HuggingFace")
                         models_loaded = True
                     except Exception as hf_e:
