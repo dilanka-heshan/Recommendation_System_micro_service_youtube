@@ -41,20 +41,36 @@ RUN mkdir -p /app/models /app/.cache && \
     try: \
         from sentence_transformers import SentenceTransformer, CrossEncoder; \
         import warnings; warnings.filterwarnings('ignore'); \
-        print('Downloading and bundling BAAI/bge-base-en embedding model...'); \
-        model1 = SentenceTransformer('BAAI/bge-base-en', trust_remote_code=True); \
+        print('=' * 60); \
+        print('Starting model bundling process...'); \
+        print('=' * 60); \
+        print('Downloading BAAI/bge-base-en embedding model...'); \
+        model1 = SentenceTransformer('BAAI/bge-base-en', trust_remote_code=True, device='cpu'); \
+        print('Saving BAAI/bge-base-en to /app/models/bge-base-en...'); \
         model1.save('/app/models/bge-base-en'); \
-        print('BAAI/bge-base-en model bundled successfully'); \
-        print('Downloading and bundling BAAI/bge-reranker-base model...'); \
-        model2 = CrossEncoder('BAAI/bge-reranker-base', trust_remote_code=True); \
+        print('✅ BAAI/bge-base-en model bundled successfully'); \
+        print('-' * 60); \
+        print('Downloading BAAI/bge-reranker-base model...'); \
+        model2 = CrossEncoder('BAAI/bge-reranker-base', trust_remote_code=True, device='cpu'); \
+        print('Saving BAAI/bge-reranker-base to /app/models/bge-reranker-base...'); \
         model2.save('/app/models/bge-reranker-base'); \
-        print('BAAI/bge-reranker-base model bundled successfully'); \
-        print('Verifying models...'); \
-        assert os.path.exists('/app/models/bge-base-en'), 'Embedding model not found'; \
-        assert os.path.exists('/app/models/bge-reranker-base'), 'Reranker model not found'; \
-        print('All models verified successfully'); \
+        print('✅ BAAI/bge-reranker-base model bundled successfully'); \
+        print('-' * 60); \
+        print('Verifying bundled models...'); \
+        assert os.path.exists('/app/models/bge-base-en'), '❌ Embedding model directory not found'; \
+        assert os.path.isdir('/app/models/bge-base-en'), '❌ Embedding model path is not a directory'; \
+        assert os.path.exists('/app/models/bge-reranker-base'), '❌ Reranker model directory not found'; \
+        assert os.path.isdir('/app/models/bge-reranker-base'), '❌ Reranker model path is not a directory'; \
+        print(f'Embedding model contents: {os.listdir(\"/app/models/bge-base-en\")}'); \
+        print(f'Reranker model contents: {os.listdir(\"/app/models/bge-reranker-base\")}'); \
+        print('=' * 60); \
+        print('✅ All models verified successfully'); \
+        print('=' * 60); \
     except Exception as e: \
-        print(f'Model bundling failed: {e}. Models will be downloaded at runtime.'); \
+        print('=' * 60); \
+        print(f'❌ Model bundling failed: {e}'); \
+        print('Models will be downloaded at runtime from HuggingFace'); \
+        print('=' * 60); \
         import traceback; traceback.print_exc()" || echo "Model bundling failed, continuing build..."
 
 # Copy the entire application

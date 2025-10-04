@@ -36,43 +36,69 @@ class VideoReranker:
                 
                 models_loaded = False
                 
-                # Try local bundled models first
+                # Try local bundled models first - load independently
+                embed_loaded = False
+                rerank_loaded = False
+                
                 try:
                     embed_path = "/app/models/bge-base-en"
-                    rerank_path = "/app/models/bge-reranker-base"
                     
-                    if (os.path.exists(embed_path) and os.path.isdir(embed_path) and 
-                        os.path.exists(rerank_path) and os.path.isdir(rerank_path)):
-                        
-                        # BGE models with specific tokenizer handling
+                    if os.path.exists(embed_path) and os.path.isdir(embed_path):
                         import warnings
                         warnings.filterwarnings("ignore", category=FutureWarning)
                         
                         self.embed_model = SentenceTransformer(embed_path, trust_remote_code=True)
-                        self.rerank_model = CrossEncoder(rerank_path, trust_remote_code=True)
-                        logger.info("BGE models loaded successfully from bundled path")
-                        models_loaded = True
+                        logger.info("✓ Embedding model loaded from bundled path")
+                        embed_loaded = True
                 except Exception as local_e:
-                    logger.warning(f"Failed to load bundled BGE models: {local_e}")
+                    logger.warning(f"✗ Failed to load bundled embedding model: {local_e}")
                 
-                # Fallback to HuggingFace BGE models if local loading failed
-                if not models_loaded:
+                try:
+                    rerank_path = "/app/models/bge-reranker-base"
+                    
+                    if os.path.exists(rerank_path) and os.path.isdir(rerank_path):
+                        import warnings
+                        warnings.filterwarnings("ignore", category=FutureWarning)
+                        
+                        self.rerank_model = CrossEncoder(rerank_path, trust_remote_code=True)
+                        logger.info("✓ Rerank model loaded from bundled path")
+                        rerank_loaded = True
+                except Exception as local_e:
+                    logger.warning(f"✗ Failed to load bundled rerank model: {local_e}")
+                
+                # Fallback to HuggingFace for models that didn't load
+                if not embed_loaded:
                     try:
-                        logger.info("Trying HuggingFace BGE model downloads...")
+                        logger.info("Trying HuggingFace embedding model download...")
                         import warnings
                         warnings.filterwarnings("ignore", category=FutureWarning)
                         
                         self.embed_model = SentenceTransformer("BAAI/bge-base-en", trust_remote_code=True)
-                        self.rerank_model = CrossEncoder("BAAI/bge-reranker-base", trust_remote_code=True)
-                        logger.info("BGE models loaded successfully from HuggingFace")
-                        models_loaded = True
+                        logger.info("✓ Embedding model loaded from HuggingFace")
+                        embed_loaded = True
                     except Exception as hf_e:
-                        logger.error(f"Failed to load from HuggingFace: {hf_e}")
+                        logger.error(f"✗ Failed to load embedding model from HuggingFace: {hf_e}")
+                
+                if not rerank_loaded:
+                    try:
+                        logger.info("Trying HuggingFace rerank model download...")
+                        import warnings
+                        warnings.filterwarnings("ignore", category=FutureWarning)
                         
+                        self.rerank_model = CrossEncoder("BAAI/bge-reranker-base", trust_remote_code=True)
+                        logger.info("✓ Rerank model loaded from HuggingFace")
+                        rerank_loaded = True
+                    except Exception as hf_e:
+                        logger.error(f"✗ Failed to load rerank model from HuggingFace: {hf_e}")
+                        
+                models_loaded = embed_loaded or rerank_loaded
+                
                 if not models_loaded:
-                    logger.error("Failed to load reranking models from both local and HuggingFace")
+                    logger.error("Failed to load any reranking models from both local and HuggingFace")
                     self.embed_model = None
                     self.rerank_model = None
+                else:
+                    logger.info(f"Model loading summary - Embedding: {'✓' if embed_loaded else '✗'}, Rerank: {'✓' if rerank_loaded else '✗'}")
             except Exception as e:
                 logger.error(f"Failed to load reranking models: {str(e)}")
                 self.embed_model = None
