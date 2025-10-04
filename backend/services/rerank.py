@@ -60,7 +60,12 @@ class VideoReranker:
                         import warnings
                         warnings.filterwarnings("ignore", category=FutureWarning)
                         
-                        self.rerank_model = CrossEncoder(rerank_path, trust_remote_code=True)
+                        # Use slow tokenizer to avoid conversion issues
+                        self.rerank_model = CrossEncoder(
+                            rerank_path, 
+                            trust_remote_code=True,
+                            tokenizer_args={'use_fast': False}
+                        )
                         logger.info("✓ Rerank model loaded from bundled path")
                         rerank_loaded = True
                 except Exception as local_e:
@@ -85,7 +90,12 @@ class VideoReranker:
                         import warnings
                         warnings.filterwarnings("ignore", category=FutureWarning)
                         
-                        self.rerank_model = CrossEncoder("BAAI/bge-reranker-base", trust_remote_code=True)
+                        # Use slow tokenizer to avoid SentencePiece conversion errors
+                        self.rerank_model = CrossEncoder(
+                            "BAAI/bge-reranker-base", 
+                            trust_remote_code=True,
+                            tokenizer_args={'use_fast': False}
+                        )
                         logger.info("✓ Rerank model loaded from HuggingFace")
                         rerank_loaded = True
                     except Exception as hf_e:
