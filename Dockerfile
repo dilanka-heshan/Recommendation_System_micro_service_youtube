@@ -35,27 +35,13 @@ ENV TF_CPP_MIN_LOG_LEVEL=3
 # Create necessary directories and download models with proper error handling
 RUN mkdir -p /app/models /app/.cache && \
     pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir --timeout=1000 --retries=3 torch sentence-transformers transformers tokenizers sentencepiece protobuf && \
-    timeout 1800 python -c "import os; os.environ['TOKENIZERS_PARALLELISM']='false'; \
-    import sys; \
-    try: \
-        from sentence_transformers import SentenceTransformer, CrossEncoder; \
-        import warnings; warnings.filterwarnings('ignore'); \
-        print('Downloading and bundling BAAI/bge-base-en embedding model...'); \
-        model1 = SentenceTransformer('BAAI/bge-base-en', trust_remote_code=True); \
-        model1.save('/app/models/bge-base-en'); \
-        print('BAAI/bge-base-en model bundled successfully'); \
-        print('Downloading and bundling BAAI/bge-reranker-base model...'); \
-        model2 = CrossEncoder('BAAI/bge-reranker-base', trust_remote_code=True, tokenizer_args={'use_fast': False}); \
-        model2.save('/app/models/bge-reranker-base'); \
-        print('BAAI/bge-reranker-base model bundled successfully'); \
-        print('Verifying models...'); \
-        assert os.path.exists('/app/models/bge-base-en'), 'Embedding model not found'; \
-        assert os.path.exists('/app/models/bge-reranker-base'), 'Reranker model not found'; \
-        print('All models verified successfully'); \
-    except Exception as e: \
-        print(f'Model bundling failed: {e}. Models will be downloaded at runtime.'); \
-        import traceback; traceback.print_exc()" || echo "Model bundling failed, continuing build..."
+    pip install --no-cache-dir --timeout=1000 --retries=3 torch sentence-transformers transformers tokenizers sentencepiece protobuf
+
+# Copy the model download script
+COPY download_models.py /tmp/download_models.py
+
+# Run the model download script with timeout
+RUN timeout 1800 python /tmp/download_models.py || echo "Model bundling failed, continuing build..."
 
 # Copy the entire application
 COPY . .
