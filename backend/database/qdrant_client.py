@@ -21,7 +21,7 @@ class QdrantVectorClient:
     
     def __init__(self):
         self.client = None
-        self.collection_name = "video_title_desc"
+        self.collection_name = "video_summary"
         
         if QDRANT_AVAILABLE:
             try:
