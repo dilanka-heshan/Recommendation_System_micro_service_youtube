@@ -1,0 +1,16 @@
+# Optional Performance Testing Dependencies
+# Install with: pip install -r requirements_performance.txt
+
+# System monitoring and resource tracking
+psutil>=5.9.0
+
+# Numerical operations for performance analysis
+numpy>=1.21.0
+
+# Additional performance tools (optional)
+memory_profiler>=0.60.0
+line_profiler>=4.0.0
+
+# Data visualization for performance reports (optional)
+matplotlib>=3.5.0
+seaborn>=0.11.0

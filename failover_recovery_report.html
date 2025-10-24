@@ -1,0 +1,580 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Failover and Recovery Test Results</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            border-bottom: 2px solid #007acc;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .title {
+            color: #007acc;
+            margin: 0 0 10px 0;
+            font-size: 2.5em;
+        }
+        .subtitle {
+            color: #666;
+            margin: 0;
+            font-size: 1.2em;
+        }
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .summary-card {
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .summary-card.total {
+            background-color: #e3f2fd;
+            border-left: 4px solid #2196f3;
+        }
+        .summary-card.passed {
+            background-color: #e8f5e8;
+            border-left: 4px solid #4caf50;
+        }
+        .summary-card.failed {
+            background-color: #fce4ec;
+            border-left: 4px solid #f44336;
+        }
+        .summary-card.skipped {
+            background-color: #fff3e0;
+            border-left: 4px solid #ff9800;
+        }
+        .summary-number {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .summary-label {
+            color: #666;
+            font-size: 0.9em;
+            text-transform: uppercase;
+        }
+        .test-category {
+            margin-bottom: 40px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .category-header {
+            background-color: #f8f9fa;
+            padding: 15px 20px;
+            border-bottom: 1px solid #ddd;
+            font-weight: bold;
+            font-size: 1.3em;
+            color: #333;
+        }
+        .category-content {
+            padding: 20px;
+        }
+        .test-item {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #eee;
+            border-radius: 6px;
+            background-color: #fafafa;
+        }
+        .test-name {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        .test-status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .status-passed {
+            background-color: #4caf50;
+            color: white;
+        }
+        .status-failed {
+            background-color: #f44336;
+            color: white;
+        }
+        .status-skipped {
+            background-color: #ff9800;
+            color: white;
+        }
+        .status-error {
+            background-color: #9c27b0;
+            color: white;
+        }
+        .test-details {
+            margin-top: 10px;
+            font-size: 0.9em;
+            color: #666;
+        }
+        .test-metrics {
+            margin-top: 10px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+        }
+        .metric {
+            background-color: #f0f0f0;
+            padding: 8px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .metric-value {
+            font-weight: bold;
+            color: #333;
+        }
+        .metric-label {
+            font-size: 0.8em;
+            color: #666;
+        }
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            color: #666;
+            font-size: 0.9em;
+        }
+        .json-data {
+            background-color: #f4f4f4;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 10px;
+            overflow-x: auto;
+            font-family: monospace;
+            font-size: 0.8em;
+        }
+        .collapsible {
+            cursor: pointer;
+            user-select: none;
+            color: #007acc;
+            text-decoration: underline;
+        }
+        .content {
+            display: none;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="title">Failover and Recovery Test Results</h1>
+            <p class="subtitle">Generated on 2025-09-28 22:55:08</p>
+            <p class="subtitle">Duration: 80.75 seconds</p>
+        </div>
+        
+        <div class="summary">
+            <div class="summary-card total">
+                <div class="summary-number">14</div>
+                <div class="summary-label">Total Tests</div>
+            </div>
+            <div class="summary-card passed">
+                <div class="summary-number">7</div>
+                <div class="summary-label">Passed</div>
+            </div>
+            <div class="summary-card failed">
+                <div class="summary-number">3</div>
+                <div class="summary-label">Failed</div>
+            </div>
+            <div class="summary-card skipped">
+                <div class="summary-number">4</div>
+                <div class="summary-label">Skipped</div>
+            </div>
+        </div>
+        
+        <div class="test-category">
+            <div class="category-header">Service Recovery</div>
+            <div class="category-content">
+        
+        <div class="test-item">
+            <div class="test-name">Health Check</div>
+            <span class="test-status status-failed">unreachable</span>
+        
+            <div class="test-details">
+                <div class="collapsible">Show Raw Data</div>
+                <div class="content">
+                    <div class="json-data">{
+  "status": "unreachable",
+  "error": "HTTPConnectionPool(host='localhost', port=8080): Read timed out. (read timeout=5)",
+  "timestamp": 1759080315.786352
+}</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-item">
+            <div class="test-name">Api Endpoints</div>
+            <span class="test-status status-failed">unknown</span>
+        
+            <div class="test-details">
+                <div class="collapsible">Show Raw Data</div>
+                <div class="content">
+                    <div class="json-data">{
+  "/": {
+    "status": "failed",
+    "error": "HTTPConnectionPool(host='localhost', port=8080): Read timed out. (read timeout=10)"
+  },
+  "/docs": {
+    "status": "available",
+    "status_code": 200,
+    "response_time": 6.599581
+  },
+  "/recommendations": {
+    "status": "available",
+    "status_code": 422,
+    "response_time": 0.001787
+  },
+  "/health": {
+    "status": "available",
+    "status_code": 200,
+    "response_time": 2.041489
+  }
+}</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-item">
+            <div class="test-name">Memory Stress</div>
+            <span class="test-status status-passed">completed</span>
+        
+            <div class="test-details">
+                <div class="collapsible">Show Raw Data</div>
+                <div class="content">
+                    <div class="json-data">{
+  "test": "memory_stress",
+  "duration": 5,
+  "status": "completed",
+  "timestamp": 1759080338.7438166
+}</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-item">
+            <div class="test-name">Timeout Handling</div>
+            <span class="test-status status-passed">passed</span>
+        
+            <div class="test-details">
+                <div class="collapsible">Show Raw Data</div>
+                <div class="content">
+                    <div class="json-data">{
+  "test": "timeout_handling",
+  "status": "passed",
+  "message": "Service responded within timeout"
+}</div>
+                </div>
+            </div>
+        </div>
+        
+            </div>
+        </div>
+        
+        <div class="test-category">
+            <div class="category-header">Database Recovery</div>
+            <div class="category-content">
+        
+        <div class="test-item">
+            <div class="test-name">Mongodb Connection</div>
+            <span class="test-status status-skipped">skipped</span>
+        
+            <div class="test-details">
+                <div class="collapsible">Show Raw Data</div>
+                <div class="content">
+                    <div class="json-data">{
+  "test": "mongodb_connection_failure",
+  "status": "skipped",
+  "reason": "MongoDB client not configured"
+}</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-item">
+            <div class="test-name">Qdrant Connection</div>
+            <span class="test-status status-skipped">skipped</span>
+        
+            <div class="test-details">
+                <div class="collapsible">Show Raw Data</div>
+                <div class="content">
+                    <div class="json-data">{
+  "test": "qdrant_connection_failure",
+  "status": "skipped",
+  "reason": "Qdrant client not configured"
+}</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-item">
+            <div class="test-name">Supabase Connection</div>
+            <span class="test-status status-skipped">skipped</span>
+        
+            <div class="test-details">
+                <div class="collapsible">Show Raw Data</div>
+                <div class="content">
+                    <div class="json-data">{
+  "test": "supabase_connection_failure",
+  "status": "skipped",
+  "reason": "Supabase client not configured"
+}</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-item">
+            <div class="test-name">Overall Recovery</div>
+            <span class="test-status status-skipped">skipped</span>
+        
+            <div class="test-details">
+                <div class="collapsible">Show Raw Data</div>
+                <div class="content">
+                    <div class="json-data">{
+  "test": "database_connection_recovery",
+  "status": "skipped",
+  "recovery_score": 0,
+  "individual_results": [],
+  "message": "Database recovery tests skipped - database clients not configured"
+}</div>
+                </div>
+            </div>
+        </div>
+        
+            </div>
+        </div>
+        
+        <div class="test-category">
+            <div class="category-header">Resource Stress</div>
+            <div class="category-content">
+        
+        <div class="test-item">
+            <div class="test-name">System Metrics</div>
+            <span class="test-status status-failed">unknown</span>
+        
+            <div class="test-details">
+                <div class="collapsible">Show Raw Data</div>
+                <div class="content">
+                    <div class="json-data">{
+  "memory_used_mb": 14188.63671875,
+  "memory_percent": 90.4,
+  "memory_available_mb": 1504.79296875,
+  "cpu_percent": 13.6,
+  "disk_used_gb": 359.33572006225586,
+  "disk_free_gb": 116.54513549804688,
+  "disk_percent": 75.50959780451211
+}</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-item">
+            <div class="test-name">Memory Stress</div>
+            <span class="test-status status-passed">completed</span>
+        
+            <div class="test-metrics">
+                <div class="metric">
+                    <div class="metric-value">11.8 MB</div>
+                    <div class="metric-label">Memory Increase</div>
+                </div>
+            </div>
+            
+            <div class="test-details">
+                <div class="collapsible">Show Raw Data</div>
+                <div class="content">
+                    <div class="json-data">{
+  "test": "memory_stress",
+  "duration": 5,
+  "target_mb": 50,
+  "start_memory_mb": 14238.03515625,
+  "peak_memory_mb": 14249.82421875,
+  "end_memory_mb": 14241.80859375,
+  "memory_increase_mb": 11.7890625,
+  "recovery_time": 7.051982879638672,
+  "status": "completed"
+}</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-item">
+            <div class="test-name">Cpu Stress</div>
+            <span class="test-status status-passed">completed</span>
+        
+            <div class="test-details">
+                <div class="collapsible">Show Raw Data</div>
+                <div class="content">
+                    <div class="json-data">{
+  "test": "cpu_stress",
+  "duration": 5,
+  "num_threads": 2,
+  "start_cpu_percent": 7.0,
+  "peak_cpu_percent": 14.7,
+  "end_cpu_percent": 15.9,
+  "cpu_increase": 7.699999999999999,
+  "thread_results": 2,
+  "status": "completed"
+}</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-item">
+            <div class="test-name">Disk Io Stress</div>
+            <span class="test-status status-passed">completed</span>
+        
+            <div class="test-details">
+                <div class="collapsible">Show Raw Data</div>
+                <div class="content">
+                    <div class="json-data">{
+  "test": "disk_io_stress",
+  "duration": 3,
+  "files_created": 17,
+  "file_size_mb": 5,
+  "start_disk_free_gb": 116.54447174072266,
+  "end_disk_free_gb": 116.54531860351562,
+  "status": "completed"
+}</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-item">
+            <div class="test-name">Api Under Stress</div>
+            <span class="test-status status-passed">completed</span>
+        
+            <div class="test-metrics">
+                <div class="metric">
+                    <div class="metric-value">100.0%</div>
+                    <div class="metric-label">Success Rate</div>
+                </div>
+            </div>
+            
+            <div class="test-details">
+                <div class="collapsible">Show Raw Data</div>
+                <div class="content">
+                    <div class="json-data">{
+  "test": "api_under_memory_stress",
+  "stress_duration": 5,
+  "baseline_response_time": 2.056478261947632,
+  "stress_avg_response_time": 2.040799140930176,
+  "success_rate": 1.0,
+  "total_requests": 2,
+  "successful_requests": 2,
+  "performance_degradation": 0.9923757419139423,
+  "status": "completed"
+}</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-item">
+            <div class="test-name">Recovery Test</div>
+            <span class="test-status status-passed">completed</span>
+        
+            <div class="test-details">
+                <div class="collapsible">Show Raw Data</div>
+                <div class="content">
+                    <div class="json-data">{
+  "test": "recovery_after_stress",
+  "stress_tests_completed": 3,
+  "recovery_wait_time": 3,
+  "final_memory_mb": 13809.1640625,
+  "final_cpu_percent": 47.0,
+  "final_disk_free_gb": 116.54489135742188,
+  "api_healthy_after_recovery": true,
+  "stress_results": [
+    {
+      "test": "memory_stress",
+      "duration": 3,
+      "target_mb": 30,
+      "start_memory_mb": 13814.5,
+      "peak_memory_mb": 13817.33203125,
+      "end_memory_mb": 13817.65234375,
+      "memory_increase_mb": 2.83203125,
+      "recovery_time": 5.034875869750977,
+      "status": "completed"
+    },
+    {
+      "test": "cpu_stress",
+      "duration": 3,
+      "num_threads": 2,
+      "start_cpu_percent": 15.5,
+      "peak_cpu_percent": 36.6,
+      "end_cpu_percent": 18.5,
+      "cpu_increase": 21.1,
+      "thread_results": 2,
+      "status": "completed"
+    },
+    {
+      "test": "disk_io_stress",
+      "duration": 3,
+      "files_created": 17,
+      "file_size_mb": 5,
+      "start_disk_free_gb": 116.5452766418457,
+      "end_disk_free_gb": 116.54515075683594,
+      "status": "completed"
+    }
+  ],
+  "status": "completed"
+}</div>
+                </div>
+            </div>
+        </div>
+        
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p><strong>Test Environment:</strong></p>
+            <ul>
+                <li>API URL: http://localhost:8080</li>
+                <li>Python Version: 3.12.4</li>
+                <li>Test Runner: run_failover_tests.py</li>
+                <li>Project Root: C:\Users\User\Documents\AI\LangGraph</li>
+            </ul>
+        </div>
+    </div>
+    
+    <script>
+        function toggleContent(element) {
+            var content = element.nextElementSibling;
+            if (content.style.display === "block") {
+                content.style.display = "none";
+            } else {
+                content.style.display = "block";
+            }
+        }
+        
+        // Make collapsible elements work
+        document.querySelectorAll('.collapsible').forEach(function(element) {
+            element.addEventListener('click', function() {
+                toggleContent(this);
+            });
+        });
+    </script>
+</body>
+</html>
